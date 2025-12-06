@@ -25,6 +25,7 @@ public class VexTrim implements Listener {
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
     private final Map<UUID, Long> passiveCooldowns = new HashMap<>();
     private final Set<UUID> hiddenPlayers = new HashSet<>();
     private final long PRIMARY_COOLDOWN;
@@ -36,12 +37,13 @@ public class VexTrim implements Listener {
     private final long PASSIVE_HIDE_DURATION_TICKS;
     private final double PASSIVE_HEALTH_THRESHOLD;
 
-    public VexTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public VexTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
         Bukkit.getPluginManager().registerEvents(this, plugin);
         PRIMARY_COOLDOWN = configManager.getLong("vex.primary.cooldown");
         PRIMARY_RADIUS = configManager.getDouble("vex.primary.radius");
@@ -58,6 +60,7 @@ public class VexTrim implements Listener {
 
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             abilityManager.activatePrimaryAbility(event.getPlayer());

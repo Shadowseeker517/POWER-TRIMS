@@ -16,9 +16,22 @@ public class AbilityManager {
     }
 
     public void activatePrimaryAbility(Player player) {
-        TrimPattern equippedTrim = ArmourChecking.getEquippedTrim(player);
-        if (equippedTrim != null && primaryAbilities.containsKey(equippedTrim)) {
-            primaryAbilities.get(equippedTrim).accept(player);
+        TrimPattern pattern = ArmourChecking.getEquippedTrim(player); // You already have this logic
+        if (pattern != null) {
+            // Call the same method the /ability command uses
+            activatePrimaryAbility(player, pattern);
+        } else {
+            Messaging.sendError(player, "You do not have a full set of trimmed armor.");
         }
     }
+
+    public void activatePrimaryAbility(Player player, TrimPattern pattern) {
+        if (primaryAbilities.containsKey(pattern)) {
+            primaryAbilities.get(pattern).accept(player);
+        } else {
+            Messaging.sendError(player, "That trim does not have a registered ability.");
+        }
+    }
+
 }
+

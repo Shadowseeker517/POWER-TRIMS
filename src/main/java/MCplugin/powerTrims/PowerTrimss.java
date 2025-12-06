@@ -23,10 +23,7 @@ import MCplugin.powerTrims.Logic.*;
 import MCplugin.powerTrims.Trims.*;
 import MCplugin.powerTrims.UltimateUpgrader.RitualManager;
 import MCplugin.powerTrims.UltimateUpgrader.UltimateUpgraderManager;
-import MCplugin.powerTrims.commands.PowerTrimsCommand;
-import MCplugin.powerTrims.commands.TrustCommand;
-import MCplugin.powerTrims.commands.UntrustCommand;
-import MCplugin.powerTrims.commands.TrustListCommand;
+import MCplugin.powerTrims.commands.*;
 import MCplugin.powerTrims.config.ConfigManager;
 import MCplugin.powerTrims.integrations.PlaceholderIntegration;
 import MCplugin.powerTrims.integrations.WorldGuardIntegration;
@@ -44,6 +41,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -72,6 +70,9 @@ public final class PowerTrimss extends JavaPlugin implements Listener {
     private DuneTrim duneTrim;
     private FlowTrim flowTrim;
     private SilenceTrim silenceTrim;
+    private WayfinderDataManager wayfinderDataManager;
+    private PlayerSettingsManager playerSettingsManager;
+    private SnoutTrim snoutTrim;
 
     @Override
     public void onLoad() {
@@ -95,6 +96,8 @@ public final class PowerTrimss extends JavaPlugin implements Listener {
         cooldownManager = new TrimCooldownManager(this);
         abilityManager = new AbilityManager();
         new DoubleSneakManager(this, abilityManager);
+        wayfinderDataManager = new WayfinderDataManager(this);
+        playerSettingsManager = new PlayerSettingsManager(this);
 
         this.upgradeKey = new NamespacedKey(this, "silence_ultimate_upgraded");
         this.ritualManager = new RitualManager(this, upgradeKey);
@@ -115,6 +118,9 @@ public final class PowerTrimss extends JavaPlugin implements Listener {
         Objects.requireNonNull(getCommand("trust")).setExecutor(new TrustCommand(trustManager));
         Objects.requireNonNull(getCommand("untrust")).setExecutor(new UntrustCommand(trustManager));
         Objects.requireNonNull(getCommand("trustlist")).setExecutor(new TrustListCommand(trustManager));
+        Objects.requireNonNull(getCommand("toggleoffhand")).setExecutor(new ToggleOffhandCommand(playerSettingsManager));
+        Objects.requireNonNull(getCommand("ability")).setExecutor(new AbilityCommand(abilityManager));
+
 
         // Cleanup any players that were in a warden state when the server stopped
         if (silenceUlt != null) {
@@ -159,30 +165,31 @@ public final class PowerTrimss extends JavaPlugin implements Listener {
         }
 
         // Register other trims
-        this.silenceTrim = new SilenceTrim(this, cooldownManager, trustManager, configManager, abilityManager);
+        this.silenceTrim = new SilenceTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager);
         getServer().getPluginManager().registerEvents(silenceTrim, this);
-        getServer().getPluginManager().registerEvents(new WildTrim(this, cooldownManager, trustManager, configManager, abilityManager), this);
-        this.vexTrim = new VexTrim(this, cooldownManager, trustManager, configManager, abilityManager);
+        getServer().getPluginManager().registerEvents(new WildTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager), this);
+        this.vexTrim = new VexTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager);
         getServer().getPluginManager().registerEvents(vexTrim, this);
-        getServer().getPluginManager().registerEvents(new TideTrim(this, cooldownManager, trustManager, configManager, abilityManager), this);
-        this.eyeTrim = new EyeTrim(this, cooldownManager, trustManager, configManager, abilityManager);
+        getServer().getPluginManager().registerEvents(new TideTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager), this);
+        this.eyeTrim = new EyeTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager);
         getServer().getPluginManager().registerEvents(eyeTrim, this);
-        this.ribTrim = new RibTrim(this, cooldownManager, trustManager, configManager, abilityManager);
+        this.ribTrim = new RibTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager);
         getServer().getPluginManager().registerEvents(ribTrim, this);
-        this.flowTrim = new FlowTrim(this, cooldownManager, configManager, abilityManager);
+        this.flowTrim = new FlowTrim(this, cooldownManager, configManager, abilityManager, playerSettingsManager);
         getServer().getPluginManager().registerEvents(flowTrim, this);
-        this.coastTrim = new CoastTrim(this, cooldownManager, trustManager, configManager, abilityManager);
+        this.coastTrim = new CoastTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager);
         getServer().getPluginManager().registerEvents(coastTrim, this);
-        this.duneTrim = new DuneTrim(this, cooldownManager, trustManager, configManager, abilityManager);
+        this.duneTrim = new DuneTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager);
         getServer().getPluginManager().registerEvents(duneTrim, this);
-        getServer().getPluginManager().registerEvents(new SentryTrim(this, cooldownManager, trustManager, configManager, abilityManager), this);
-        getServer().getPluginManager().registerEvents(new WayfinderTrim(this, cooldownManager, configManager, abilityManager), this);
-        getServer().getPluginManager().registerEvents(new RaiserTrim(this, cooldownManager, trustManager, configManager, abilityManager), this);
-        getServer().getPluginManager().registerEvents(new WardTrim(this, cooldownManager, configManager, abilityManager), this);
-        getServer().getPluginManager().registerEvents(new SpireTrim(this, cooldownManager, trustManager, configManager, abilityManager), this);
-        getServer().getPluginManager().registerEvents(new HostTrim(this, cooldownManager, trustManager, configManager, abilityManager), this);
-        getServer().getPluginManager().registerEvents(new SnoutTrim(this,cooldownManager, trustManager, configManager, abilityManager), this);
-        this.boltTrim = new BoltTrim(this, cooldownManager, trustManager, configManager);
+        getServer().getPluginManager().registerEvents(new SentryTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager), this);
+        getServer().getPluginManager().registerEvents(new WayfinderTrim(this, cooldownManager, configManager, abilityManager, wayfinderDataManager, playerSettingsManager), this);
+        getServer().getPluginManager().registerEvents(new RaiserTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager), this);
+        getServer().getPluginManager().registerEvents(new WardTrim(this, cooldownManager, configManager, abilityManager, playerSettingsManager), this);
+        getServer().getPluginManager().registerEvents(new SpireTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager), this);
+        getServer().getPluginManager().registerEvents(new HostTrim(this, cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager), this);
+        this.snoutTrim = new SnoutTrim(this,cooldownManager, trustManager, configManager, abilityManager, playerSettingsManager);
+        getServer().getPluginManager().registerEvents(snoutTrim, this);
+        this.boltTrim = new BoltTrim(this, cooldownManager, trustManager, configManager, playerSettingsManager, abilityManager);
         getServer().getPluginManager().registerEvents(boltTrim, this);
     }
 

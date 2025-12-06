@@ -26,6 +26,7 @@ public class EyeTrim implements Listener {
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
     private final double TRUE_SIGHT_RADIUS;
     private final int TRUE_SIGHT_DURATION_TICKS;
     private final long TRUE_SIGHT_COOLDOWN;
@@ -35,12 +36,13 @@ public class EyeTrim implements Listener {
     private final Map<UUID, BukkitRunnable> activeAnimationTasks = new HashMap<>();
     private final Map<UUID, List<Entity>> activeEyeEffects = new HashMap<>();
 
-    public EyeTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public EyeTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
 
         TRUE_SIGHT_RADIUS = configManager.getDouble("eye.primary.true_sight_radius");
         TRUE_SIGHT_DURATION_TICKS = configManager.getInt("eye.primary.true_sight_duration_ticks");
@@ -54,6 +56,7 @@ public class EyeTrim implements Listener {
 
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             abilityManager.activatePrimaryAbility(event.getPlayer());

@@ -25,6 +25,7 @@ public class TideTrim implements Listener {
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
 
     private final long TIDE_COOLDOWN;
     private final double WAVE_WIDTH;
@@ -34,12 +35,13 @@ public class TideTrim implements Listener {
     private final int MOVE_DELAY_TICKS;
     private final int MAX_MOVES;
 
-    public TideTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public TideTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
 
         TIDE_COOLDOWN = configManager.getLong("tide.primary.cooldown");
         WAVE_WIDTH = configManager.getDouble("tide.primary.wave_width");
@@ -55,6 +57,7 @@ public class TideTrim implements Listener {
 
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
 

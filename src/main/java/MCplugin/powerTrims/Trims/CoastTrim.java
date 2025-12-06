@@ -31,6 +31,7 @@ public class CoastTrim implements Listener {
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
 
     private final Map<UUID, List<BlockDisplay>> activeChains = new HashMap<>();
 
@@ -38,12 +39,13 @@ public class CoastTrim implements Listener {
             Material.PRISMARINE, Material.DARK_PRISMARINE, Material.SEA_LANTERN, Material.LAPIS_BLOCK
     );
 
-    public CoastTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public CoastTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
 
         abilityManager.registerPrimaryAbility(TrimPattern.COAST, this::coastPrimary);
     }
@@ -215,6 +217,7 @@ public class CoastTrim implements Listener {
 
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             abilityManager.activatePrimaryAbility(event.getPlayer());

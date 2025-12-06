@@ -11,6 +11,7 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.PrepareSmithingEvent;
@@ -100,33 +101,48 @@ public class UltimateUpgraderManager implements Listener, CommandExecutor, Inven
             return;
         }
 
+        Inventory topInventory = event.getView().getTopInventory();
         Inventory clickedInventory = event.getClickedInventory();
         int rawSlot = event.getRawSlot();
 
-        if (event.getView().getTopInventory().equals(clickedInventory)) {
-            if (ARMOR_SLOTS.contains(rawSlot)) {
-                return; // Allow placing/taking armor
-            }
+        if (event.getClick() == ClickType.SHIFT_LEFT || event.getClick() == ClickType.SHIFT_RIGHT) {
+            if (clickedInventory != null && clickedInventory.equals(event.getView().getBottomInventory())) {
+                ItemStack clickedItem = event.getCurrentItem();
+                if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
 
-            // Prevent shift-clicking items into the GUI from the player's inventory
-            if (event.isShiftClick()) {
                 event.setCancelled(true);
+
+                Material type = clickedItem.getType();
+                int targetSlot = -1;
+
+                if (type.name().endsWith("_HELMET")) targetSlot = HELMET_SLOT;
+                else if (type.name().endsWith("_CHESTPLATE")) targetSlot = CHESTPLATE_SLOT;
+                else if (type.name().endsWith("_LEGGINGS")) targetSlot = LEGGINGS_SLOT;
+                else if (type.name().endsWith("_BOOTS")) targetSlot = BOOTS_SLOT;
+
+                if (targetSlot != -1 && topInventory.getItem(targetSlot) == null) {
+                    topInventory.setItem(targetSlot, clickedItem.clone());
+                    clickedItem.setAmount(0);
+                }
+                return;
+            }
+        }
+
+        if (topInventory.equals(clickedInventory)) {
+            if (ARMOR_SLOTS.contains(rawSlot)) {
                 return;
             }
 
             if (rawSlot == UPGRADE_BUTTON_SLOT) {
                 event.setCancelled(true);
-                initiateRitual(player, event.getView().getTopInventory());
+                initiateRitual(player, topInventory);
                 return;
             }
 
-            // Cancel all other clicks in the top inventory
-            event.setCancelled(true);
-        } else if (event.isShiftClick() && clickedInventory != null && clickedInventory.equals(event.getView().getBottomInventory())) {
-            // Also explicitly cancel shift-clicks from the bottom inventory
             event.setCancelled(true);
         }
     }
+
 
     @EventHandler
     public void onSmithing(PrepareSmithingEvent event) {

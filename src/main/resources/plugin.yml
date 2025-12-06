@@ -1,7 +1,7 @@
 name: PowerTrims
 version: '2.2'
 main: MCplugin.powerTrims.PowerTrimss
-api-version: '1.21'
+api-version: '1.21.1'
 author: div
 softdepend: [PlaceholderAPI, WorldGuard, Geyser-Spigot]
 
@@ -26,6 +26,12 @@ commands:
     description: PowerTrims commands.
     usage: /<command> [reload]
     aliases: [pt]
+  toggleoffhand:
+    description: Toggles the off-hand key for ability activation.
+    usage: /<command>
+  ability:
+    description: Activates your equipped trim ability.
+    usage: /<command> [trim_name]
 permissions:
   powertrims.reload:
     description: Allows reloading the PowerTrims config.

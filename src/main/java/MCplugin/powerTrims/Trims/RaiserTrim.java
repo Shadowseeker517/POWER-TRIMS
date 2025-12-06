@@ -33,6 +33,7 @@ public class RaiserTrim implements Listener {
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
 
     private final long SURGE_COOLDOWN;
     private final double ENTITY_PULL_RADIUS;
@@ -45,12 +46,13 @@ public class RaiserTrim implements Listener {
 
     private final Set<UUID> awaitingLanding = new HashSet<>();
 
-    public RaiserTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public RaiserTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
 
         SURGE_COOLDOWN = configManager.getLong("raiser.primary.cooldown");
@@ -63,6 +65,7 @@ public class RaiserTrim implements Listener {
 
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             abilityManager.activatePrimaryAbility(event.getPlayer());

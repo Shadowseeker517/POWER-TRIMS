@@ -1,9 +1,7 @@
 package MCplugin.powerTrims.Trims;
 
-import MCplugin.powerTrims.Logic.ArmourChecking;
+import MCplugin.powerTrims.Logic.*;
 import MCplugin.powerTrims.config.ConfigManager;
-import MCplugin.powerTrims.Logic.PersistentTrustManager;
-import MCplugin.powerTrims.Logic.TrimCooldownManager;
 import MCplugin.powerTrims.integrations.WorldGuardIntegration;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -33,17 +31,23 @@ public class BoltTrim implements Listener {
     private final TrimCooldownManager cooldownManager;
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
+    private final PlayerSettingsManager playerSettingsManager;
+    private final AbilityManager abilityManager;
     private final List<BlockDisplay> activeLightningParts = new ArrayList<>();
 
-    public BoltTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager) {
+    public BoltTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, PlayerSettingsManager playerSettingsManager, AbilityManager abilityManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
+        this.playerSettingsManager = playerSettingsManager;
+        this.abilityManager = abilityManager;
+        abilityManager.registerPrimaryAbility(TrimPattern.BOLT, this::activateBoltPrimary);
     }
 
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             activateBoltPrimary(event.getPlayer());
@@ -71,8 +75,8 @@ public class BoltTrim implements Listener {
         double initialDamage = configManager.getDouble("bolt.primary.initial_damage");
         double subsequentDamage = configManager.getDouble("bolt.primary.subsequent_damage");
         int targetRange = configManager.getInt("bolt.primary.target_range");
-        int weaknessDuration = configManager.getInt("bolt.primary.weakness_duration"); 
-        int weaknessAmplifier = configManager.getInt("bolt.primary.weakness_amplifier"); 
+        int weaknessDuration = configManager.getInt("bolt.primary.weakness_duration");
+        int weaknessAmplifier = configManager.getInt("bolt.primary.weakness_amplifier");
 
         LivingEntity target = getTarget(player, targetRange);
 
@@ -99,7 +103,7 @@ public class BoltTrim implements Listener {
                 struckEntities.add(nextTarget);
                 currentTarget = nextTarget;
             } else {
-                break; 
+                break;
             }
         }
 
@@ -112,7 +116,7 @@ public class BoltTrim implements Listener {
         if (world == null) return;
 
         final Material lightningMaterial = Material.CYAN_WOOL;
-        final int lifeTicks = 10; 
+        final int lifeTicks = 10;
 
         Location startPoint = targetLocation.clone().add(0, 15, 0);
         if (startPoint.getY() > world.getMaxHeight()) {

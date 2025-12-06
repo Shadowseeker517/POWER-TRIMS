@@ -27,9 +27,10 @@ public class WildTrim implements Listener {
 
     private final JavaPlugin plugin;
     private final TrimCooldownManager cooldownManager;
-    private final PersistentTrustManager trustManager; 
+    private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
     private final Random random = new Random();
 
     private final int PASSIVE_TRIGGER_HEALTH;
@@ -46,12 +47,13 @@ public class WildTrim implements Listener {
     private final Set<UUID> frozenEntities = new HashSet<>();
 
 
-    public WildTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public WildTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
-        this.trustManager = trustManager; 
+        this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
 
         PASSIVE_TRIGGER_HEALTH = configManager.getInt("wild.passive.trigger_health");
         PASSIVE_COOLDOWN_SECONDS = configManager.getInt("wild.passive.cooldown_seconds");
@@ -82,7 +84,7 @@ public class WildTrim implements Listener {
         Location start = player.getEyeLocation();
         Vector direction = player.getLocation().getDirection().normalize();
         double range = GRAPPLE_RANGE;
-        Player wildUser = player; 
+        Player wildUser = player;
 
         player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_THROW, 1.0f, 1.0f);
 
@@ -185,20 +187,20 @@ public class WildTrim implements Listener {
 
                 double distanceSquared = player.getLocation().distanceSquared(target);
 
-                if (distanceSquared < 1.5) { 
+                if (distanceSquared < 1.5) {
                     reachedTarget = true;
                     finishGrapple();
                     return;
                 }
 
-                if (ticks++ > 30) { 
+                if (ticks++ > 30) {
                     finishGrapple();
                     return;
                 }
 
                 Vector pullVector = target.toVector().subtract(player.getLocation().toVector());
                 double length = pullVector.length();
-                double speed = Math.min(maxSpeed, length * 0.28); 
+                double speed = Math.min(maxSpeed, length * 0.28);
 
                 player.setVelocity(pullVector.normalize().multiply(speed));
 
@@ -255,6 +257,7 @@ public class WildTrim implements Listener {
         if (!configManager.isTrimEnabled("wild")) {
             return;
         }
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
 
@@ -283,7 +286,7 @@ public class WildTrim implements Listener {
 
             activateRootTrap(player);
             setPassiveCooldown(player);
-        }, 1L); 
+        }, 1L);
     }
 
     public void activateRootTrap(Player player) {
@@ -300,7 +303,7 @@ public class WildTrim implements Listener {
             if (entity instanceof LivingEntity && entity != player) {
                 LivingEntity target = (LivingEntity) entity;
                 if (target instanceof Player targetPlayer && trustManager.isTrusted(player.getUniqueId(), targetPlayer.getUniqueId())) {
-                    continue; 
+                    continue;
                 }
                 affectedEntities.add(target);
                 frozenEntities.add(target.getUniqueId());

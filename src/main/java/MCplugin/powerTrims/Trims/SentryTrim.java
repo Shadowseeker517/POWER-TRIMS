@@ -26,6 +26,7 @@ public class SentryTrim implements Listener {
     private final PersistentTrustManager trustManager; // Add an instance of the Trust Manager
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
     private final NamespacedKey effectKey;
     private final Set<UUID> activeGuards;
 
@@ -35,12 +36,13 @@ public class SentryTrim implements Listener {
     private final long COOLDOWN;
     private final double TRUE_DAMAGE;
 
-    public SentryTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public SentryTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
         this.effectKey = new NamespacedKey(plugin, "sentry_trim_effect");
         this.activeGuards = new HashSet<>();
 
@@ -184,6 +186,7 @@ public class SentryTrim implements Listener {
         if (!configManager.isTrimEnabled("sentry")) {
             return;
         }
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             // This is important: it prevents the player's hands from actually swapping items
             event.setCancelled(true);

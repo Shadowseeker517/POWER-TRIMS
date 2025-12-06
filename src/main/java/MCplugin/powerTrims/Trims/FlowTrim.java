@@ -26,6 +26,7 @@ public class FlowTrim implements Listener {
     private final TrimCooldownManager cooldownManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
     private final NamespacedKey dashEndFallImmunityKey;
 
     private final int HEART_COST_INTERVAL;
@@ -37,11 +38,12 @@ public class FlowTrim implements Listener {
     private final Map<UUID, Boolean> isDashing = new HashMap<>();
     private final Set<UUID> activationDebounce = new HashSet<>();
 
-    public FlowTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public FlowTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
         this.dashEndFallImmunityKey = new NamespacedKey(plugin, "flow_trim_dash_end_immune");
 
         HEART_COST_INTERVAL = configManager.getInt("flow.primary.heart_cost_interval");
@@ -207,6 +209,7 @@ public class FlowTrim implements Listener {
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
         if (!configManager.isTrimEnabled("flow")) return;
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             abilityManager.activatePrimaryAbility(event.getPlayer());

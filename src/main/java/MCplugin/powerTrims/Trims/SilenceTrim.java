@@ -23,6 +23,7 @@ import org.bukkit.util.Vector;
 import org.joml.AxisAngle4f;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SilenceTrim implements Listener {
@@ -31,9 +32,10 @@ public class SilenceTrim implements Listener {
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
 
     private final Map<UUID, Long> wardensEchoCooldowns = new HashMap<>();
-    private final List<BukkitTask> activeAnimations = new ArrayList<>();
+    private final Queue<BukkitTask> activeAnimations = new ConcurrentLinkedQueue<>();
 
     private final long WARDENS_ECHO_COOLDOWN_MS;
     private final double PRIMARY_RADIUS;
@@ -47,12 +49,13 @@ public class SilenceTrim implements Listener {
             Material.SCULK, Material.SCULK_VEIN, Material.SCULK_CATALYST, Material.DEEPSLATE
     );
 
-    public SilenceTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public SilenceTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
 
         WARDENS_ECHO_COOLDOWN_MS = configManager.getLong("silence.passive.cooldown");
         PRIMARY_RADIUS = configManager.getDouble("silence.primary.radius");
@@ -69,6 +72,7 @@ public class SilenceTrim implements Listener {
 
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             abilityManager.activatePrimaryAbility(event.getPlayer());
@@ -110,7 +114,6 @@ public class SilenceTrim implements Listener {
         final double SEGMENT_LENGTH = 0.25;
         final int DURATION_TICKS = 60;
         final List<List<BlockDisplay>> allTentacles = new ArrayList<>();
-        // OPTIMIZATION: Increase interpolation to 3 ticks to smooth out the 2-tick timer
         final int INTERPOLATION_TICKS = 3;
 
         for (int i = 0; i < TENTACLE_COUNT; i++) {
@@ -119,7 +122,7 @@ public class SilenceTrim implements Listener {
                 int finalJ = j;
                 BlockDisplay segment = player.getWorld().spawn(player.getLocation(), BlockDisplay.class, bd -> {
                     bd.setBlock(Material.SCULK.createBlockData());
-                    bd.setInterpolationDuration(INTERPOLATION_TICKS); // Use new value
+                    bd.setInterpolationDuration(INTERPOLATION_TICKS);
                     bd.setInterpolationDelay(-1);
                     Transformation t = bd.getTransformation();
                     t.getScale().set(0.2f - (finalJ * 0.01f));
@@ -135,7 +138,6 @@ public class SilenceTrim implements Listener {
 
             @Override
             public void run() {
-                // OPTIMIZATION: Stop task if ticks * period > duration
                 if ((ticks * 2) > DURATION_TICKS || !player.isValid()) {
                     this.cancel();
                     allTentacles.forEach(tentacle -> tentacle.forEach(BlockDisplay::remove));
@@ -159,7 +161,7 @@ public class SilenceTrim implements Listener {
                         if (!segment.isValid()) continue;
 
                         Vector dir = player.getLocation().getDirection().clone().multiply(-1);
-                        double wave = Math.sin(ticks * 2 * 0.3 + i * 1.5 + j * 0.5) * 0.6; // Adjust wave speed for new timer
+                        double wave = Math.sin(ticks * 2 * 0.3 + i * 1.5 + j * 0.5) * 0.6;
                         dir.add(sideDir.clone().multiply(wave * 0.5));
                         dir.setY(dir.getY() + Math.cos(ticks * 2 * 0.2 + i) * 0.4 - (j * 0.05));
 
@@ -169,7 +171,7 @@ public class SilenceTrim implements Listener {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 2L); // OPTIMIZATION: Changed from 1L to 2L
+        }.runTaskTimer(plugin, 0L, 2L);
         activeAnimations.add(task);
     }
 
@@ -179,7 +181,6 @@ public class SilenceTrim implements Listener {
         final int graspTicks = 20;
         final Map<LivingEntity, List<BlockDisplay>> tendrils = new HashMap<>();
         final Map<LivingEntity, BlockDisplay> chargeSpheres = new HashMap<>();
-        // OPTIMIZATION: Increase interpolation to 4 ticks to smooth out the 2-tick timer
         final int INTERPOLATION_TICKS = 4;
 
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_WARDEN_TENDRIL_CLICKS, 2.0f, 1.2f);
@@ -188,7 +189,7 @@ public class SilenceTrim implements Listener {
             BlockDisplay charge = player.getWorld().spawn(player.getEyeLocation(), BlockDisplay.class, bd -> {
                 bd.setBlock(Material.SCULK_SHRIEKER.createBlockData());
                 bd.setBrightness(new Display.Brightness(15, 15));
-                bd.setInterpolationDuration(INTERPOLATION_TICKS); // Use new value
+                bd.setInterpolationDuration(INTERPOLATION_TICKS);
                 bd.setInterpolationDelay(-1);
                 Transformation t = bd.getTransformation();
                 t.getScale().set(0.4f);
@@ -202,7 +203,7 @@ public class SilenceTrim implements Listener {
             for (int i = 0; i < tendrilLinks; i++) {
                 BlockDisplay link = player.getWorld().spawn(player.getEyeLocation(), BlockDisplay.class, bd -> {
                     bd.setBlock(Material.SCULK.createBlockData());
-                    bd.setInterpolationDuration(INTERPOLATION_TICKS); // Use new value
+                    bd.setInterpolationDuration(INTERPOLATION_TICKS);
                     bd.setInterpolationDelay(-1);
                     Transformation t = bd.getTransformation();
                     t.getScale().set(0.25f);
@@ -214,11 +215,10 @@ public class SilenceTrim implements Listener {
         }
 
         BukkitTask task = new BukkitRunnable() {
-            private int ticks = 0; // This will now increment every 2 server ticks
+            private int ticks = 0;
 
             @Override
             public void run() {
-                // OPTIMIZATION: Stop task if ticks * period > duration
                 if ((ticks * 2) >= (extendTicks + graspTicks) || !player.isValid()) {
                     this.cancel();
                     return;
@@ -231,7 +231,6 @@ public class SilenceTrim implements Listener {
                     LivingEntity target = entry.getKey();
                     if (!target.isValid()) continue;
 
-                    // Adjust progress calculation for the 2-tick timer
                     double extendProgress = Math.min(1.0, (double) (ticks * 2) / extendTicks);
                     Location targetAnchor = target.getLocation().add(0, target.getHeight() / 2, 0);
                     Vector toTarget = targetAnchor.toVector().subtract(playerAnchor.toVector());
@@ -243,13 +242,13 @@ public class SilenceTrim implements Listener {
 
                         double progress = (double) i / (links.size() - 1);
                         Location linkPos = playerAnchor.clone().add(toTarget.clone().multiply(progress * extendProgress));
-                        linkPos.add(0, Math.sin(ticks * 2 * 0.5 + i * 0.5) * 0.2, 0); // Adjust wave speed
+                        linkPos.add(0, Math.sin(ticks * 2 * 0.5 + i * 0.5) * 0.2, 0);
                         link.teleport(linkPos);
                     }
 
                     BlockDisplay charge = chargeSpheres.get(target);
                     if (charge != null && charge.isValid()) {
-                        double chargeProgress = (double) (ticks * 2) / (extendTicks + graspTicks); // Adjust progress
+                        double chargeProgress = (double) (ticks * 2) / (extendTicks + graspTicks);
                         Location chargePos = playerAnchor.clone().add(toTarget.clone().multiply(chargeProgress));
                         charge.teleport(chargePos);
                     }
@@ -273,7 +272,7 @@ public class SilenceTrim implements Listener {
                 chargeSpheres.values().forEach(BlockDisplay::remove);
                 activeAnimations.remove(this);
             }
-        }.runTaskTimer(plugin, 0L, 2L); // OPTIMIZATION: Changed from 1L to 2L
+        }.runTaskTimer(plugin, 0L, 2L);
         activeAnimations.add(task);
     }
 
@@ -283,7 +282,6 @@ public class SilenceTrim implements Listener {
         location.getWorld().playSound(location, Sound.ENTITY_WARDEN_SONIC_BOOM, 1.5f, 1.2f);
         int particleCount = 40;
         int animationTicks = 20;
-        // OPTIMIZATION: Collect shards to remove them with one task
         final List<BlockDisplay> shards = new ArrayList<>(particleCount);
 
         for (int i = 0; i < particleCount; i++) {
@@ -297,7 +295,7 @@ public class SilenceTrim implements Listener {
                 t.getLeftRotation().set(new AxisAngle4f(r.nextFloat() * 360, r.nextFloat(), r.nextFloat(), r.nextFloat()));
                 bd.setTransformation(t);
             });
-            shards.add(shard); // Add to list
+            shards.add(shard);
 
             Vector randomVec = new Vector(r.nextDouble() - 0.5, r.nextDouble() - 0.5, r.nextDouble() - 0.5);
             Location finalPos = location.clone().add(randomVec.normalize().multiply(3.0));
@@ -306,11 +304,8 @@ public class SilenceTrim implements Listener {
             Transformation finalTransform = shard.getTransformation();
             finalTransform.getScale().set(0f);
             shard.setTransformation(finalTransform);
-
-            // OPTIMIZATION: Removed individual runnable creation
         }
 
-        // OPTIMIZATION: Create one runnable to remove all shards
         BukkitTask task = new BukkitRunnable() {
             @Override
             public void run() {
@@ -321,7 +316,7 @@ public class SilenceTrim implements Listener {
                 }
                 activeAnimations.remove(this);
             }
-        }.runTaskLater(plugin, animationTicks + 5); // Add 5 ticks buffer
+        }.runTaskLater(plugin, animationTicks + 5);
         activeAnimations.add(task);
     }
 
@@ -330,7 +325,6 @@ public class SilenceTrim implements Listener {
         Location center = player.getLocation();
         int particleCount = 70;
         int animationTicks = 30;
-        // OPTIMIZATION: Collect shards to remove them with one task
         final List<BlockDisplay> shards = new ArrayList<>(particleCount);
 
         for (int i = 0; i < particleCount; i++) {
@@ -344,7 +338,7 @@ public class SilenceTrim implements Listener {
                 t.getLeftRotation().set(new AxisAngle4f(r.nextFloat() * 360, r.nextFloat(), r.nextFloat(), r.nextFloat()));
                 bd.setTransformation(t);
             });
-            shards.add(shard); // Add to list
+            shards.add(shard);
 
             Location finalPos = center.clone().add(Vector.getRandom().subtract(new Vector(0.5, 0.5, 0.5)).normalize().multiply(ECHO_RADIUS));
             shard.teleport(finalPos);
@@ -352,11 +346,8 @@ public class SilenceTrim implements Listener {
             Transformation finalTransform = shard.getTransformation();
             finalTransform.getScale().set(0f);
             shard.setTransformation(finalTransform);
-
-            // OPTIMIZATION: Removed individual runnable creation
         }
 
-        // OPTIMIZATION: Create one runnable to remove all shards
         BukkitTask task = new BukkitRunnable() {
             @Override
             public void run() {
@@ -367,7 +358,7 @@ public class SilenceTrim implements Listener {
                 }
                 activeAnimations.remove(this);
             }
-        }.runTaskLater(plugin, animationTicks + 5); // Add 5 ticks buffer
+        }.runTaskLater(plugin, animationTicks + 5);
         activeAnimations.add(task);
 
         Location heartPos = player.getEyeLocation().add(0, 1.5, 0);

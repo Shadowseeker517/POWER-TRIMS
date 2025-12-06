@@ -22,6 +22,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Transformation;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
@@ -31,6 +32,7 @@ public class SnoutTrim implements Listener {
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
 
     private final long ROAR_COOLDOWN;
     private final long MINION_LIFESPAN_TICKS;
@@ -39,14 +41,15 @@ public class SnoutTrim implements Listener {
         SUMMONER_KEY = new NamespacedKey("powertrims", "snout_summoner_uuid");
     }
 
-    private final Map<UUID, List<WitherSkeleton>> playerMinions = new HashMap<>();
+    private final Map<UUID, List<WitherSkeleton>> playerMinions = new ConcurrentHashMap<>();
 
-    public SnoutTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public SnoutTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
 
         ROAR_COOLDOWN = configManager.getLong("snout.primary.cooldown");
         MINION_LIFESPAN_TICKS = configManager.getLong("snout.primary.minion_lifespan_ticks");
@@ -57,6 +60,7 @@ public class SnoutTrim implements Listener {
 
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
 
@@ -306,5 +310,14 @@ public class SnoutTrim implements Listener {
         return !(targetOwnerUUID != null && targetOwnerUUID.equals(owner.getUniqueId().toString()));
     }
 
-
+    public void cleanup() {
+        for (List<WitherSkeleton> minions : playerMinions.values()) {
+            for (WitherSkeleton minion : minions) {
+                if (minion.isValid()) {
+                    minion.remove();
+                }
+            }
+        }
+        playerMinions.clear();
+    }
 }

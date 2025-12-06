@@ -30,6 +30,7 @@ public class SpireTrim implements Listener {
     private final TrimCooldownManager cooldownManager;
     private final PersistentTrustManager trustManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
     private final Set<UUID> markedTargets;
     private final Set<UUID> dashingPlayers;
     private final ConfigManager configManager;
@@ -45,12 +46,13 @@ public class SpireTrim implements Listener {
     private static final List<Material> TRAIL_MATERIALS = List.of(Material.ICE, Material.PACKED_ICE, Material.PRISMARINE_BRICKS);
     private static final List<Material> SHATTER_MATERIALS = List.of(Material.GLASS, Material.LIGHT_BLUE_STAINED_GLASS, Material.CYAN_STAINED_GLASS);
 
-    public SpireTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public SpireTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
         this.markedTargets = new HashSet<>();
         this.dashingPlayers = new HashSet<>();
 
@@ -257,6 +259,7 @@ public class SpireTrim implements Listener {
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
         if (!configManager.isTrimEnabled("spire")) return;
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             abilityManager.activatePrimaryAbility(event.getPlayer());

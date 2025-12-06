@@ -113,7 +113,7 @@ coast:
     resistance-amplifier: 0
 dune:
   primary:
-    cooldown: 600
+    cooldown: 60000
     duration: 200
     height: 15.0
     pull_strength: 0.5

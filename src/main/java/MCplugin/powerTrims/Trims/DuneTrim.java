@@ -28,6 +28,7 @@ public class DuneTrim implements Listener {
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
     private final long TORNADO_COOLDOWN;
     private final int TORNADO_DURATION;
     private final double TORNADO_HEIGHT;
@@ -43,12 +44,13 @@ public class DuneTrim implements Listener {
 
     private record TornadoParticle(BlockDisplay display, double height, double radius, double speed, double startAngle) {}
 
-    public DuneTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public DuneTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
 
         TORNADO_COOLDOWN = configManager.getLong("dune.primary.cooldown");
         TORNADO_DURATION = configManager.getInt("dune.primary.duration");
@@ -169,6 +171,7 @@ public class DuneTrim implements Listener {
 
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             abilityManager.activatePrimaryAbility(event.getPlayer());

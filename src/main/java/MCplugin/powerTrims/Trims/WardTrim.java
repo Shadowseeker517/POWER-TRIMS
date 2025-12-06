@@ -24,6 +24,7 @@ public class WardTrim implements Listener {
     private final TrimCooldownManager cooldownManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
 
     // --- CONSTANTS ---
     private final int BARRIER_DURATION;
@@ -32,11 +33,12 @@ public class WardTrim implements Listener {
     private final long WARD_COOLDOWN;
     private final Set<UUID> activeBarriers = new HashSet<>();
 
-    public WardTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public WardTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
 
         BARRIER_DURATION = configManager.getInt("ward.primary.barrier_duration");
         ABSORPTION_LEVEL = configManager.getInt("ward.primary.absorption_level");
@@ -146,6 +148,7 @@ public class WardTrim implements Listener {
     @EventHandler
     public void onOffhandPress(PlayerSwapHandItemsEvent event) {
         if (!configManager.isTrimEnabled("ward")) return;
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
             abilityManager.activatePrimaryAbility(event.getPlayer());

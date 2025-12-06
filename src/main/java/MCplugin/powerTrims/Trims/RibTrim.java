@@ -23,6 +23,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Transformation;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
@@ -32,6 +33,7 @@ public class RibTrim implements Listener {
     private final PersistentTrustManager trustManager;
     private final ConfigManager configManager;
     private final AbilityManager abilityManager;
+    private final PlayerSettingsManager playerSettingsManager;
 
     private final long RIB_COOLDOWN;
     private final long MINION_LIFESPAN_TICKS;
@@ -41,15 +43,16 @@ public class RibTrim implements Listener {
         OWNER_KEY = new NamespacedKey("powertrims", "owner_uuid");
     }
 
-    private final Map<UUID, LivingEntity> playerTargetMap = new HashMap<>();
-    private final Map<UUID, List<Mob>> playerMinionMap = new HashMap<>();
+    private final Map<UUID, LivingEntity> playerTargetMap = new ConcurrentHashMap<>();
+    private final Map<UUID, List<Mob>> playerMinionMap = new ConcurrentHashMap<>();
 
-    public RibTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager) {
+    public RibTrim(JavaPlugin plugin, TrimCooldownManager cooldownManager, PersistentTrustManager trustManager, ConfigManager configManager, AbilityManager abilityManager, PlayerSettingsManager playerSettingsManager) {
         this.plugin = plugin;
         this.cooldownManager = cooldownManager;
         this.trustManager = trustManager;
         this.configManager = configManager;
         this.abilityManager = abilityManager;
+        this.playerSettingsManager = playerSettingsManager;
 
         RIB_COOLDOWN = configManager.getLong("rib.primary.cooldown");
         MINION_LIFESPAN_TICKS = configManager.getLong("rib.primary.minion_lifespan_ticks");
@@ -247,6 +250,7 @@ public class RibTrim implements Listener {
         if (!configManager.isTrimEnabled("rib")) {
             return;
         }
+        if (!playerSettingsManager.isOffhandActivationEnabled(event.getPlayer().getUniqueId())) return;
         if (event.getPlayer().isSneaking()) {
             event.setCancelled(true);
 
